@@ -19,6 +19,7 @@ def create_embeddings_matrix(embedding_model, dictionary, full_dictionary, d=300
     # Matrix size is 300
     embedding_matrix = np.zeros(shape=((d, MAX_VOCAB_SIZE+1)))
     cnt  = 0
+    cnt2 = 0 
     unfound = []
     
     for w, i in dictionary.items():
@@ -28,8 +29,10 @@ def create_embeddings_matrix(embedding_model, dictionary, full_dictionary, d=300
             # embedding_matrix[:,i] = embedding_model['UNK']
             unfound.append(i)
         else:
+            cnt2 += 1
             embedding_matrix[:, i] = embedding_model[w]
     print('Number of not found words = ', cnt)
+    print('Number of found words = ', cnt2)
     return embedding_matrix, unfound
 
 def pick_most_similar_words(src_word, dist_mat, ret_count=10, threshold=None):

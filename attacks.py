@@ -3,7 +3,7 @@ Author: Moustafa Alzantot (malzantot@ucla.edu)
 """
 
 import numpy as np
-import glove_utils
+import embedding_utils
 import pickle
 
 class GeneticAtack(object):
@@ -23,7 +23,7 @@ class GeneticAtack(object):
         self.model = model
         self.batch_model = batch_model
         self.neighbour_model = neighbour_model
-        self.sess = sess
+        #self.sess = sess
         self.max_iters = max_iters
         self.pop_size = pop_size
         self.lm = lm
@@ -42,14 +42,16 @@ class GeneticAtack(object):
         """ Select the most effective replacement to word at pos (pos)
         in (x_cur) between the words in replace_list """
         new_x_list = [self.do_replace(x_cur, pos, w) if x_orig[pos] != w and w != 0 else x_cur  for w in replace_list ]
-        new_x_preds = self.neighbour_model.predict(self.sess, np.array(new_x_list))
+        new_x_preds = self.neighbour_model.predict(np.array(new_x_list))
+        #new_x_preds = self.neighbour_model.predict(self.sess, np.array(new_x_list))
         
         ## Keep only top_n 
         # replace_list = replace_list[:self.top_n]
         #new_x_list = new_x_list[:self.top_n]
         #new_x_preds = new_x_preds[:self.top_n,:]
         new_x_scores = new_x_preds[:,target]
-        orig_score = self.model.predict(self.sess, x_cur[np.newaxis,:])[0,target]
+        orig_score = self.model.predict(x_cur[np.newaxis,:])[0,target]
+        #orig_score = self.model.predict(self.sess, x_cur[np.newaxis,:])[0,target]        
         new_x_scores = new_x_scores - orig_score
         ## Eliminate not that clsoe words
         new_x_scores[self.top_n:] = -10000000
@@ -98,7 +100,7 @@ class GeneticAtack(object):
             rand_idx = np.random.choice(x_len, 1, p=w_select_probs)[0]
 
         # src_word = x_cur[rand_idx]
-        # replace_list,_ =  glove_utils.pick_most_similar_words(src_word, self.dist_mat, self.top_n, 0.5)
+        # replace_list,_ =  embedding_utils.pick_most_similar_words(src_word, self.dist_mat, self.top_n, 0.5)
         replace_list = neigbhours[rand_idx]
         if len(replace_list) < self.top_n:
             replace_list = np.concatenate((replace_list, np.zeros(self.top_n - replace_list.shape[0])))
@@ -118,7 +120,7 @@ class GeneticAtack(object):
         x_adv = x_orig.copy()
         x_len = np.sum(np.sign(x_orig))
         # Neigbhours for every word.
-        tmp = [glove_utils.pick_most_similar_words(x_orig[i], self.dist_mat, 50, 0.5) for i in range(x_len)]
+        tmp = [embedding_utils.pick_most_similar_words(x_orig[i], self.dist_mat, 50, 0.5) for i in range(x_len)]
         neigbhours_list =[x[0] for x in tmp]
         neighbours_dist = [x[1] for x in tmp]
         neighbours_len = [len(x) for x in neigbhours_list]
@@ -126,13 +128,14 @@ class GeneticAtack(object):
             if (x_adv[i] < 27):
                 neighbours_len[i] = 0 # To prevent replacement of words like 'the', 'a', 'of', etc.
         w_select_probs = neighbours_len / np.sum(neighbours_len)
-        tmp = [glove_utils.pick_most_similar_words(x_orig[i], self.dist_mat, self.top_n, 0.5) for i in range(x_len)]
+        tmp = [embedding_utils.pick_most_similar_words(x_orig[i], self.dist_mat, self.top_n, 0.5) for i in range(x_len)]
         neigbhours_list =[x[0] for x in tmp]
         neighbours_dist = [x[1] for x in tmp]
         pop = self.generate_population(x_orig, neigbhours_list, neighbours_dist, w_select_probs, target, self.pop_size)
         for i in range(self.max_iters):
             # print(i)
-            pop_preds = self.batch_model.predict(self.sess, np.array(pop))
+            pop_preds = self.batch_model.predict(np.array(pop))
+            #pop_preds = self.batch_model.predict(self.sess, np.array(pop))
             pop_scores = pop_preds[:, target]
             print('\t\t', i, ' -- ', np.max(pop_scores))
             pop_ranks = np.argsort(pop_scores)[::-1]
@@ -234,7 +237,7 @@ class PerturbSentBaseline(object):
             print( ' --- {} / {} '.format(pos, x_len))
         assert pos < x_len, "invalid position"
         src_word = x_cur[pos]
-        replace_list,_ =  glove_utils.pick_most_similar_words(src_word, self.dist_mat, 60)
+        replace_list,_ =  embedding_utils.pick_most_similar_words(src_word, self.dist_mat, 60)
         replace_list = [w if w != 0 else src_word for w in replace_list]
         return self.select_best_replacement(pos, x_cur, x_orig, target, replace_list)
     
@@ -275,7 +278,7 @@ class GreedyAttack(object):
                 # for each word in x_adv
                 if x != self.dataset.dict["UNK"]:
                     # skip the UNK
-                    x_list,_ =  glove_utils.pick_most_similar_words(x, self.dist_mat)
+                    x_list,_ =  embedding_utils.pick_most_similar_words(x, self.dist_mat)
                     # TODO(malzantot) Score words in x_ based on the language model
                     # Add the selected word to the W list
                     # TODO(malzantot): check selected word is not equal to the original word.

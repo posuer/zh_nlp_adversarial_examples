@@ -1,12 +1,12 @@
 import re
 import numpy as np
-from settings import *
+from NLImodel.settings import *
 from keras.utils import *
 from keras.preprocessing import sequence
 from keras.layers import *
-import settings
+import NLImodel.settings
 
-setting = settings.Setting()
+setting = NLImodel.settings.Setting()
 def tokenize(data):
 	return [x.strip().lower() for x in re.split('(\W+)', data) if x.strip()]
 

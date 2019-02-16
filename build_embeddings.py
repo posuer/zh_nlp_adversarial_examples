@@ -7,9 +7,9 @@ import embedding_utils
 import data_utils
 
 MAX_VOCAB_SIZE = 50000
-DATA_PATH = 'NLImodel'
-EMBEDDING_PATH = '../wiki.zh.vec'
-COUNTER_FITTED = 'counter-fitted-vectors.txt'
+DATA_PATH = 'NLImodel/'
+EMBEDDING_PATH = 'cc.zh.300.vec'
+COUNTER_FITTED = 'counter_fitted_vectors.txt'
 
 if not os.path.exists('aux_files'):
 	os.mkdir('aux_files')
@@ -22,12 +22,14 @@ with open(('aux_files/dataset_%d.pkl' %(MAX_VOCAB_SIZE)), 'wb') as f:
 
 
 # create the glove embeddings matrix (used by the classification model)
+print('Loading ', EMBEDDING_PATH)
 glove_model = embedding_utils.loadEmbeddingModel(EMBEDDING_PATH )
 glove_embeddings, _ = embedding_utils.create_embeddings_matrix(glove_model, xnli_dataset.dict, xnli_dataset.full_dict)
 # save the glove_embeddings matrix
 np.save('aux_files/embeddings_glove_%d.npy' %(MAX_VOCAB_SIZE), glove_embeddings)
 
 # Load the counterfitted-vectors (used by our attack)
+print('Loading ', COUNTER_FITTED)
 glove2 = embedding_utils.loadEmbeddingModel(COUNTER_FITTED)
 # create embeddings matrix for our vocabulary
 counter_embeddings, missed = embedding_utils.create_embeddings_matrix(glove2, xnli_dataset.dict, xnli_dataset.full_dict)
