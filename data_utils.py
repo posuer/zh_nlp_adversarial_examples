@@ -10,6 +10,8 @@ class XNLIDataset(object):
 
 		self.max_vocab_size = max_vocab_size
 
+		self.data_all = [None] * 6 #include original version of self.train_X, self.train_Y, self.train_Z, self.val_X, self.val_Y, self.val_Z
+		
 		self.train_X = None
 		self.train_Y = None
 		self.train_Z = None
@@ -17,11 +19,11 @@ class XNLIDataset(object):
 		self.val_Y = None
 		self.val_Z = None	
 
-		#only for using Google Language Model
-		self.dict = dict()
-		#self.inv_dict = dict()
+		#used for Google Language Model
+		self.dict = dict() #used for building selcted Word Embedding
+		self.inv_dict = dict()
 		self.full_dict = dict()
-		#self.inv_full_dict = dict()
+		self.inv_full_dict = dict()
 
 		self.build_dataset()
 
@@ -34,17 +36,34 @@ class XNLIDataset(object):
 		train_data=[l.strip().split('\t') for l in open(self.train_dir, errors='ignore')]
 		dev_data=[l.strip().split('\t') for l in open(self.dev_dir, errors='ignore')]
 
-		self.dict = get_vocab(train_data + dev_data)
-		self.full_dict = self.dict
+		self.full_dict = get_vocab(train_data + dev_data)
+
+		if self.max_vocab_size is None:
+		    self.max_vocab_size = len(self.full_dict) + 1
+		
+		for word, idx in self.full_dict.items():
+			if idx < self.max_vocab_size:
+				self.inv_dict[idx] = word
+				self.dict[word] = idx
+		    #self.full_dict[word] = idx
+			self.inv_full_dict[idx] = word 
+
 		#word_embeddings = get_embeddings(word_vocab, embeddings_name, setting.word_dim)
 
-		self.train_X, self.train_Y, self.train_Z, \
-			self.val_X, self.val_Y, self.val_Z	= create_train_dev_set(train_data, dev_data, self.dict)
+		self.data_all[0], self.data_all[1], self.data_all[2],   \
+			self.data_all[3], self.data_all[4], self.data_all[5] = create_train_dev_set(train_data, dev_data, self.dict)
 		
+		self.train_X = [[w if w < self.max_vocab_size else self.max_vocab_size for w in sen] for sen in self.data_all[0]]
+		self.train_Y = [[w if w < self.max_vocab_size else self.max_vocab_size for w in sen] for sen in self.data_all[1]]
+		self.train_Z = [[w if w < self.max_vocab_size else self.max_vocab_size for w in sen] for sen in self.data_all[2]]
+		self.val_X = [[w if w < self.max_vocab_size else self.max_vocab_size for w in sen] for sen in self.data_all[3]]
+		self.val_Y = [[w if w < self.max_vocab_size else self.max_vocab_size for w in sen] for sen in self.data_all[4]]
+		self.val_Z = [[w if w < self.max_vocab_size else self.max_vocab_size for w in sen] for sen in self.data_all[5]]	
+
 		print('Dataset built !')
-		print('Dict size: ', len(self.dict))
-		print('Train size: ', len(self.train_X))
-		print('Dev size: ', len(self.val_X))
+		print('Dict size:', len(self.dict), ' eg:', next(iter(self.dict.items())))
+		print('Train size:', len(self.train_X), ' eg:', self.train_X[0])
+		print('Dev size:', len(self.val_X))
 
  
 

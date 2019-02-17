@@ -1,7 +1,7 @@
 import numpy as np
 
 def loadEmbeddingModel(File):
-    print ("Loading Embedding Model")
+    print ("Loading Embedding Model:", File)
     f = open(File,'r')
     model = {}
     for line in f:
