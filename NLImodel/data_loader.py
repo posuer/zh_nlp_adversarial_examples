@@ -45,7 +45,7 @@ def get_embeddings(word_dict, vec_file, emb_size):
 def map_to_id(data, vocab):
 	return [vocab[word] if word in vocab else 1 for word in data]
 
-def create_train_dev_set(train_data, dev_data, word_dict, labels=labels):
+def create_train_dev_set(train_data, dev_data, word_dict, max_vocab_size=None, labels=labels):
 	train_X,train_Y,train_Z = [], [], []
 	for label, q1, q2 in train_data:
 		q1 = map_to_id(tokenize(q1), word_dict)
@@ -56,7 +56,11 @@ def create_train_dev_set(train_data, dev_data, word_dict, labels=labels):
 			q2 = q2[:setting.max_len]
 		train_X+= [q1]
 		train_Y+= [q2]
-		train_Z+= [labels[label]]		
+		train_Z+= [labels[label]]	
+	
+	if max_vocab_size:
+		train_X = [[w if w < max_vocab_size else max_vocab_size for w in sen] for sen in train_X]
+		train_Y = [[w if w < max_vocab_size else max_vocab_size for w in sen] for sen in train_Y]
 
 	train_X = sequence.pad_sequences(train_X, maxlen = setting.max_len)
 	train_Y = sequence.pad_sequences(train_Y, maxlen = setting.max_len)
@@ -73,6 +77,10 @@ def create_train_dev_set(train_data, dev_data, word_dict, labels=labels):
 		dev_X+= [q1]
 		dev_Y+= [q2]
 		dev_Z+= [labels[label]]		
+	
+	if max_vocab_size:
+		dev_X = [[w if w < max_vocab_size else max_vocab_size for w in sen] for sen in dev_X]
+		dev_Y = [[w if w < max_vocab_size else max_vocab_size for w in sen] for sen in dev_Y]
 
 	dev_X = sequence.pad_sequences(dev_X, maxlen = setting.max_len)
 	dev_Y = sequence.pad_sequences(dev_Y, maxlen = setting.max_len)

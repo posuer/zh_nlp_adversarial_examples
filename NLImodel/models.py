@@ -1,11 +1,11 @@
 import numpy as np
 import pandas as pd
 import argparse
-import settings
+import NLImodel.settings
 import os
 import time
-from settings import *
-from data_loader import *
+from NLImodel.settings import *
+from NLImodel.data_loader import *
 from keras.layers import *
 from keras.activations import softmax
 from keras.regularizers import l2
@@ -18,8 +18,8 @@ from keras.models import load_model
 
 np.random.seed(0)
 
-class NLImodel(object):
-	def __init__(self,setting=settings.Setting(),is_train=True):
+class NLImodelClass(object):
+	def __init__(self,setting=NLImodel.settings.Setting(),is_train=True):
 		self.lr = setting.lr
 		self.word_dim = setting.word_dim
 		self.lstm_dim = setting.lstm_dim
@@ -44,14 +44,17 @@ class NLImodel(object):
 			self.train_model()
 		else:
 			self.model = load_model(self.model_dir)
-			print("Model Weights Loaded.")
-
+			print("Model Loaded.")
+			#self.load_data()
 	
 	def predict(self, test_X, test_Y):
-		assert len(test_X) >= 2 and len(test_Y) >= 2
+		if not any(isinstance(el, np.ndarray) for el in test_X):
+			test_X = np.array([test_X])
+			test_Y = np.array([test_Y])
 		return self.model.predict([test_X, test_Y])
 
 	def evaluate_accuracy(self, test_x, test_y, test_z):
+		'''Under developing'''
 		test_accuracy = 0.0
 		pred_z = self.predict(test_x, test_y)
 
@@ -128,6 +131,33 @@ class NLImodel(object):
 				callbacks=[checkpoint, lr_sched, early_stopping])	
 		
 		self.model = model
+	
+	def load_data(self):
+		#train_name = self.train_dir+"multinli.train.%s.txt"%source_language
+		#dev_name = self.dev_dir+"xnli_%s.txt"%source_language
+		train_name = self.train_dir	
+		dev_name = self.dev_dir
+		#embeddings_name = self.embed_dir
+		print("Train file: ",train_name)
+		print("Dev file: ",dev_name)
+		#print("Embedding file: ",embeddings_name)
+		
+		train_data=[l.strip().split('\t') for l in open(train_name, errors='ignore')]
+		dev_data=[l.strip().split('\t') for l in open(dev_name, errors='ignore')]
+
+		word_vocab = get_vocab(train_data + dev_data)	
+		#word_embeddings = get_embeddings(word_vocab, embeddings_name, setting.word_dim)
+
+		self.train_X, self.train_Y, self.train_Z, \
+			self.val_X, self.val_Y, self.val_Z	= create_train_dev_set(train_data, dev_data, word_vocab)
+		
+		if self.train_X is None:
+			print("++++++ Unable to load data +++++++")
+			return None	
+
+		print("Data prepared: train_X, train_Y, train_Z, val_X, val_Y, val_Z")
+		
+
 
 
 '''

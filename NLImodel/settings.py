@@ -11,9 +11,9 @@ class Setting(object):
 		self.batch_size = 1024
 		self.epochs = 50
     		# your directory here
-		self.model_dir = "models/1550117241/lstm_110_128_0.40_0.63.h5"
-		self.train_dir = "multinli.train.zh.txt"
-		self.dev_dir = "xnli_zh.txt"
+		self.model_dir = "NLImodel/models/1550117241/lstm_110_128_0.40_0.63.h5"
+		self.train_dir = "NLImodel/multinli.train.zh.txt"
+		self.dev_dir = "NLImodel/xnli_zh.txt"
 		self.embed_dir = "../../wiki.zh.vec"
 
 labels = {'neutral':0, 'entailment':1, 'contradiction':2}

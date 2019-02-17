@@ -5,8 +5,8 @@ from NLImodel.data_loader import *
 
 class XNLIDataset(object):
 	def __init__(self, path='NLImodel/', max_vocab_size=None):
-		self.train_dir = path+setting.train_dir
-		self.dev_dir = path+setting.dev_dir
+		self.train_dir = setting.train_dir
+		self.dev_dir = setting.dev_dir
 
 		self.max_vocab_size = max_vocab_size
 
@@ -50,15 +50,8 @@ class XNLIDataset(object):
 
 		#word_embeddings = get_embeddings(word_vocab, embeddings_name, setting.word_dim)
 
-		self.data_all[0], self.data_all[1], self.data_all[2],   \
-			self.data_all[3], self.data_all[4], self.data_all[5] = create_train_dev_set(train_data, dev_data, self.dict)
-		
-		self.train_X = [[w if w < self.max_vocab_size else self.max_vocab_size for w in sen] for sen in self.data_all[0]]
-		self.train_Y = [[w if w < self.max_vocab_size else self.max_vocab_size for w in sen] for sen in self.data_all[1]]
-		self.train_Z = [[w if w < self.max_vocab_size else self.max_vocab_size for w in sen] for sen in self.data_all[2]]
-		self.val_X = [[w if w < self.max_vocab_size else self.max_vocab_size for w in sen] for sen in self.data_all[3]]
-		self.val_Y = [[w if w < self.max_vocab_size else self.max_vocab_size for w in sen] for sen in self.data_all[4]]
-		self.val_Z = [[w if w < self.max_vocab_size else self.max_vocab_size for w in sen] for sen in self.data_all[5]]	
+		self.train_X, self.train_Y, self.train_Z,   \
+			self.val_X, self.val_Y, self.val_Z = create_train_dev_set(train_data, dev_data, self.full_dict, self.max_vocab_size)
 
 		print('Dataset built !')
 		print('Dict size:', len(self.dict), ' eg:', next(iter(self.dict.items())))
