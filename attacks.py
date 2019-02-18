@@ -7,14 +7,14 @@ import embedding_utils
 import pickle
 
 class GeneticAtack(object):
-    def __init__(self, sess, model, batch_model, 
+    def __init__(self, model, batch_model, 
                  neighbour_model,
                  dataset, dist_mat,
                  skip_list,
                  lm,
                  pop_size=20, max_iters=100, 
                  n1 = 20, n2 = 5,
-                 use_lm=True, use_suffix=False):
+                 use_lm=False, use_suffix=False):
         self.dist_mat = dist_mat
         self.dataset = dataset
         self.dict  = self.dataset.dict
@@ -33,29 +33,51 @@ class GeneticAtack(object):
         self.use_suffix = use_suffix
         self.temp = 3.0
 
+        self.thisX = None # current X sentence for NLI dataset
+
     def do_replace(self, x_cur, pos, new_word):
         x_new = x_cur.copy()
         x_new[pos] = new_word
         return x_new 
     
+    def predict(self, val_Y):
+        val_X = self.thisX
+        
+        if any(isinstance(x, np.ndarray) for x in val_Y): #if val_Y has multiple item
+            val_X = np.array([self.thisX]*len(val_Y))
+            temp = val_Y
+            val_Y = []
+            for i in range(len(temp)): 
+                if len(temp[i]) < len(self.thisX):  
+                    val_Y.append(self.recover_padding(temp[i]))
+            val_Y = np.array(val_Y)
+        elif len(val_Y) < len(self.thisX):        
+                    temp = val_Y
+                    val_Y = None
+                    val_Y = self.recover_padding(temp)
+
+        return self.model.predict(val_X, val_Y)
+    
+    def recover_padding(self, item):
+        padlen = len(self.thisX)-len(item)
+        return np.pad(item, (padlen,0), 'constant', constant_values=0)
+    
     def select_best_replacement(self, pos, x_cur, x_orig, target, replace_list):
         """ Select the most effective replacement to word at pos (pos)
         in (x_cur) between the words in replace_list """
         new_x_list = [self.do_replace(x_cur, pos, w) if x_orig[pos] != w and w != 0 else x_cur  for w in replace_list ]
-        new_x_preds = self.neighbour_model.predict(np.array(new_x_list))
-        #new_x_preds = self.neighbour_model.predict(self.sess, np.array(new_x_list))
+        new_x_preds = self.predict(np.array(new_x_list))
         
         ## Keep only top_n 
         # replace_list = replace_list[:self.top_n]
         #new_x_list = new_x_list[:self.top_n]
         #new_x_preds = new_x_preds[:self.top_n,:]
         new_x_scores = new_x_preds[:,target]
-        orig_score = self.model.predict(x_cur[np.newaxis,:])[0,target]
-        #orig_score = self.model.predict(self.sess, x_cur[np.newaxis,:])[0,target]        
+        orig_score = self.predict(x_cur)[0,target] #[np.newaxis,:]
         new_x_scores = new_x_scores - orig_score
         ## Eliminate not that clsoe words
         new_x_scores[self.top_n:] = -10000000
-        
+        '''
         if self.use_lm:
             prefix = ""
             suffix = None
@@ -83,7 +105,7 @@ class GeneticAtack(object):
             filtered_words_idx = rank_replaces_by_lm[self.top_n2:]
             #print(filtered_words_idx)
             new_x_scores[filtered_words_idx] = -10000000
-            
+        '''
         if (np.max(new_x_scores) > 0):
             return new_x_list[np.argsort(new_x_scores)[-1]]
         return x_cur
@@ -95,9 +117,22 @@ class GeneticAtack(object):
         #                                             self.dist_mat[x_cur[idx]][x_cur[idx]] != 100000) and
         #                     x_cur[idx] not in self.skip_list
         #            ]
+
         rand_idx = np.random.choice(x_len, 1, p=w_select_probs)[0]
+
+        inters_times = 0
+        idx_list = list(range(0, x_len))
         while x_cur[rand_idx] != x_orig[rand_idx]:
             rand_idx = np.random.choice(x_len, 1, p=w_select_probs)[0]
+            inters_times = inters_times+1
+            #print(rand_idx, inters_times)
+            if rand_idx in idx_list:
+                idx_list.remove(rand_idx)
+            if (not idx_list) or inters_times > (10 * x_len):
+                return None
+
+
+            #print(rand_idx, x_cur[rand_idx], x_orig[rand_idx])
 
         # src_word = x_cur[rand_idx]
         # replace_list,_ =  embedding_utils.pick_most_similar_words(src_word, self.dist_mat, self.top_n, 0.5)
@@ -115,27 +150,38 @@ class GeneticAtack(object):
             if np.random.uniform() < 0.5:
                 x_new[i] = x2[i]
         return x_new
-    
+
+    def build_no_repl_list(self, no_repl_word = ['的','得','地','了','在']):
+        return [self.dataset.full_dict[word] for word in no_repl_word]
+
     def attack(self, x_orig, target, max_change=0.4):
-        x_adv = x_orig.copy()
+        self.thisX = x_orig[0]
+        x_orig = x_orig[1]
+
         x_len = np.sum(np.sign(x_orig))
+        x_orig = x_orig[len(x_orig)-x_len:len(x_orig)] # remove padding
+        #x_adv = x_orig.copy()
         # Neigbhours for every word.
-        tmp = [embedding_utils.pick_most_similar_words(x_orig[i], self.dist_mat, 50, 0.5) for i in range(x_len)]
+        tmp = [embedding_utils.pick_most_similar_words(x_orig[i], self.dist_mat, 50, 0.5) for i in range(x_len)] #front padding
         neigbhours_list =[x[0] for x in tmp]
         neighbours_dist = [x[1] for x in tmp]
         neighbours_len = [len(x) for x in neigbhours_list]
-        for i in range(x_len):
-            if (x_adv[i] < 27):
-                neighbours_len[i] = 0 # To prevent replacement of words like 'the', 'a', 'of', etc.
+
+        #To prevent replacement of words like ['的','得','地','了','在']
+        for i in range(len(x_orig)): #front padding
+            if (x_orig[i] in self.build_no_repl_list()):
+                neighbours_len[i] = 0 
+
         w_select_probs = neighbours_len / np.sum(neighbours_len)
         tmp = [embedding_utils.pick_most_similar_words(x_orig[i], self.dist_mat, self.top_n, 0.5) for i in range(x_len)]
         neigbhours_list =[x[0] for x in tmp]
         neighbours_dist = [x[1] for x in tmp]
+
         pop = self.generate_population(x_orig, neigbhours_list, neighbours_dist, w_select_probs, target, self.pop_size)
+        pop = [x for x in pop if isinstance(x, np.ndarray)] #remove None pop
         for i in range(self.max_iters):
             # print(i)
-            pop_preds = self.batch_model.predict(np.array(pop))
-            #pop_preds = self.batch_model.predict(self.sess, np.array(pop))
+            pop_preds = self.predict(np.array(pop))
             pop_scores = pop_preds[:, target]
             print('\t\t', i, ' -- ', np.max(pop_scores))
             pop_ranks = np.argsort(pop_scores)[::-1]
@@ -149,13 +195,15 @@ class GeneticAtack(object):
                 return pop[top_attack]
             elite = [pop[top_attack]] # elite
             #print(select_probs.shape)
-            parent1_idx = np.random.choice(self.pop_size, size=self.pop_size-1, p=select_probs)
-            parent2_idx = np.random.choice(self.pop_size, size=self.pop_size-1, p=select_probs)
+            parent1_idx = np.random.choice(len(pop), size=len(pop)-1, p=select_probs)
+            parent2_idx = np.random.choice(len(pop), size=len(pop)-1, p=select_probs)
             
             childs = [self.crossover(pop[parent1_idx[i]],
                                      pop[parent2_idx[i]])
-                      for i in range(self.pop_size-1)]
+                      for i in range(len(pop)-1)]
+
             childs = [self.perturb(x, x_orig, neigbhours_list, neighbours_dist, w_select_probs, target) for x in childs]
+            childs = [x for x in childs if isinstance(x, np.ndarray) ] #remove None child
             pop = elite + childs 
             
         return None
@@ -193,14 +241,14 @@ class PerturbSentBaseline(object):
         """ Select the most effective replacement to word at pos (pos)
         in (x_cur) between the words in replace_list """
         new_x_list = [self.do_replace(x_cur, pos, w) if x_orig[pos] != w else x_cur  for w in replace_list ]
-        new_x_preds = self.batch_model.predict(self.sess, np.array(new_x_list))
+        new_x_preds = self.batch_model.predict( np.array(new_x_list))
         
         ## Keep only top_n 
         # replace_list = replace_list[:self.top_n]
         #new_x_list = new_x_list[:self.top_n]
         #new_x_preds = new_x_preds[:self.top_n,:]
         new_x_scores = new_x_preds[:,target]
-        orig_score = self.model.predict(self.sess, x_cur[np.newaxis,:])[0,target]
+        orig_score = self.model.predict( x_cur[np.newaxis,:])[0,target]
         new_x_scores = new_x_scores - orig_score
         ## Eliminate not that clsoe words
         new_x_scores[self.top_n:] = -10000000
@@ -249,7 +297,7 @@ class PerturbSentBaseline(object):
         for i in range(x_len):
             orig_w = x_adv[i]
             x_new = self.perturb(x_adv, i, x_orig, target)
-            model_pred = self.model.predict(self.sess, x_new[np.newaxis,:])[0]
+            model_pred = self.model.predict( x_new[np.newaxis,:])[0]
             if np.argmax(model_pred) == target:
                 return x_adv
             x_adv[i] = orig_w
@@ -290,7 +338,7 @@ class GreedyAttack(object):
                             # print(self.inv_dict[x_orig[i]], ' -> ', self.inv_dict[x_new[i]])
                             list_x_new.append(x_new)
                             break
-            x_new_pred_probs = np.array([self.model.predict(self.sess, x[np.newaxis,:])[0] for x in list_x_new])
+            x_new_pred_probs = np.array([self.model.predict( x[np.newaxis,:])[0] for x in list_x_new])
             x_new_preds = np.argmax(x_new_pred_probs, axis=1)
             x_new_scores = x_new_pred_probs[:, target]
             top_attack = np.argsort(x_new_scores)[-1]

@@ -10,14 +10,12 @@ class XNLIDataset(object):
 
 		self.max_vocab_size = max_vocab_size
 
-		self.data_all = [None] * 6 #include original version of self.train_X, self.train_Y, self.train_Z, self.val_X, self.val_Y, self.val_Z
-		
-		self.train_X = None
-		self.train_Y = None
-		self.train_Z = None
-		self.val_X = None
-		self.val_Y = None
-		self.val_Z = None	
+		#include original version of self.train_X, self.train_Y, self.train_Z, self.val_X, self.val_Y, self.val_Z
+		self.train_X_nomax, self.train_Y_nomax, self.train_Z_nomax,   \
+			self.val_X_nomax, self.val_Y_nomax, self.val_Z_nomax = None, None, None, None, None, None
+
+		self.train_X, self.train_Y, self.train_Z,   \
+			self.val_X, self.val_Y, self.val_Z = None, None, None, None, None, None
 
 		#used for Google Language Model
 		self.dict = dict() #used for building selcted Word Embedding
@@ -53,12 +51,17 @@ class XNLIDataset(object):
 		self.train_X, self.train_Y, self.train_Z,   \
 			self.val_X, self.val_Y, self.val_Z = create_train_dev_set(train_data, dev_data, self.full_dict, self.max_vocab_size)
 
+		self.train_X_nomax, self.train_Y_nomax, self.train_Z_nomax,   \
+			self.val_X_nomax, self.val_Y_nomax, self.val_Z_nomax = create_train_dev_set(train_data, dev_data, self.full_dict)
+
 		print('Dataset built !')
 		print('Dict size:', len(self.dict), ' eg:', next(iter(self.dict.items())))
 		print('Train size:', len(self.train_X), ' eg:', self.train_X[0])
 		print('Dev size:', len(self.val_X))
 
- 
+	def build_text(self, text_seq):
+		text_words = [self.inv_full_dict[x] for x in text_seq]
+		return ' '.join(text_words)
 
 
 

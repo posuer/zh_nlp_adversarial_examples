@@ -1,4 +1,3 @@
-import sys
 
 class Setting(object):
 	def __init__(self):
