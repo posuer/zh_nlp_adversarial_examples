@@ -5,6 +5,7 @@ Author: Moustafa Alzantot (malzantot@ucla.edu)
 import numpy as np
 import embedding_utils
 import pickle
+import random
 
 class GeneticAtack(object):
     def __init__(self, model, batch_model, 
@@ -154,7 +155,7 @@ class GeneticAtack(object):
     def build_no_repl_list(self, no_repl_word = ['的','得','地','了','在']):
         return [self.dataset.full_dict[word] for word in no_repl_word]
 
-    def attack(self, x_orig, target, max_change=0.4):
+    def attack(self, x_orig, orig_label, max_change=0.4):
         self.thisX = x_orig[0]
         x_orig = x_orig[1]
 
@@ -177,34 +178,38 @@ class GeneticAtack(object):
         neigbhours_list =[x[0] for x in tmp]
         neighbours_dist = [x[1] for x in tmp]
 
-        pop = self.generate_population(x_orig, neigbhours_list, neighbours_dist, w_select_probs, target, self.pop_size)
-        pop = [x for x in pop if isinstance(x, np.ndarray)] #remove None pop
-        for i in range(self.max_iters):
-            # print(i)
-            pop_preds = self.predict(np.array(pop))
-            pop_scores = pop_preds[:, target]
-            print('\t\t', i, ' -- ', np.max(pop_scores))
-            pop_ranks = np.argsort(pop_scores)[::-1]
-            top_attack = pop_ranks[0]
-            
-            logits = np.exp(pop_scores / self.temp)
-            select_probs = logits / np.sum(logits)
+        target_list = [0,1,2]
+        target_list.remove(orig_label)
+        random.shuffle(target_list)
+        for target in target_list:
+            pop = self.generate_population(x_orig, neigbhours_list, neighbours_dist, w_select_probs, target, self.pop_size)
+            pop = [x for x in pop if isinstance(x, np.ndarray)] #remove None pop
+            for i in range(self.max_iters):
+                # print(i)
+                pop_preds = self.predict(np.array(pop))
+                pop_scores = pop_preds[:, target]
+                print('\t\t', i, ' -- ', np.max(pop_scores))
+                pop_ranks = np.argsort(pop_scores)[::-1]
+                top_attack = pop_ranks[0]
+                
+                logits = np.exp(pop_scores / self.temp)
+                select_probs = logits / np.sum(logits)
 
 
-            if np.argmax(pop_preds[top_attack, :]) == target:
-                return pop[top_attack]
-            elite = [pop[top_attack]] # elite
-            #print(select_probs.shape)
-            parent1_idx = np.random.choice(len(pop), size=len(pop)-1, p=select_probs)
-            parent2_idx = np.random.choice(len(pop), size=len(pop)-1, p=select_probs)
-            
-            childs = [self.crossover(pop[parent1_idx[i]],
-                                     pop[parent2_idx[i]])
-                      for i in range(len(pop)-1)]
+                if np.argmax(pop_preds[top_attack, :]) == target:
+                    return pop[top_attack]
+                elite = [pop[top_attack]] # elite
+                #print(select_probs.shape)
+                parent1_idx = np.random.choice(len(pop), size=len(pop)-1, p=select_probs)
+                parent2_idx = np.random.choice(len(pop), size=len(pop)-1, p=select_probs)
+                
+                childs = [self.crossover(pop[parent1_idx[i]],
+                                        pop[parent2_idx[i]])
+                        for i in range(len(pop)-1)]
 
-            childs = [self.perturb(x, x_orig, neigbhours_list, neighbours_dist, w_select_probs, target) for x in childs]
-            childs = [x for x in childs if isinstance(x, np.ndarray) ] #remove None child
-            pop = elite + childs 
+                childs = [self.perturb(x, x_orig, neigbhours_list, neighbours_dist, w_select_probs, target) for x in childs]
+                childs = [x for x in childs if isinstance(x, np.ndarray) ] #remove None child
+                pop = elite + childs 
             
         return None
     

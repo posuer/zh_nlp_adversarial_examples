@@ -1,7 +1,9 @@
 from IPython.core.display import display, HTML
 import numpy as np
 
-def html_render(x_orig, x_adv):
+from NLImodel.settings import labels_reverse
+
+def html_render(x_orig, x_adv, mark = 'color'):
     x_orig_words = x_orig.split(' ')
     x_adv_words = x_adv.split(' ')
     orig_html = []
@@ -13,8 +15,12 @@ def html_render(x_orig, x_adv):
             orig_html.append(x_orig_words[i])
             adv_html.append(x_adv_words[i])
         else:
-            orig_html.append(format("<b style='color:green'>%s</b>" %x_orig_words[i]))
-            adv_html.append(format("<b style='color:red'>%s</b>" %x_adv_words[i]))
+            if mark == 'color':
+                orig_html.append(format("<b style='color:green'>%s</b>" %x_orig_words[i]))
+                adv_html.append(format("<b style='color:red'>%s</b>" %x_adv_words[i]))
+            elif mark == 'square brackets':
+                orig_html.append(format("【 %s 】" %x_orig_words[i]))
+                adv_html.append(format("【 %s 】" %x_adv_words[i]))
     
     orig_html = ' '.join(orig_html)
     adv_html = ' '.join(adv_html)
@@ -25,7 +31,7 @@ def recover_max_vocal(x_orig, x_adv):
 
 def visualize_attack(model, dataset, x_orig, x_adv):
     if not isinstance(x_adv, np.ndarray):
-        x_adv = 'This attack failed.'
+        print('This attack failed.')
         return
     x_adv_padding = np.pad(x_adv, (len(x_orig[1])-len(x_adv),0), 'constant', constant_values=0)
 
@@ -44,17 +50,56 @@ def visualize_attack(model, dataset, x_orig, x_adv):
     orig_html0 = orig_txt0
     orig_html1, adv_html = html_render(orig_txt1, adv_txt)
 
-    print('Original Prediction = %s. (Confidence = %0.2f) ' %(('Entailment' if np.argmax(orig_pred) == 1 else 'Contradiction'), np.max(orig_pred)*100.0))
+    print('Original Prediction = %s. (Confidence = %0.2f) ' %(( labels_reverse[np.argmax(orig_pred)] ), np.max(orig_pred)*100.0))
     print('Premise')
     display(HTML(orig_html0))
     print('Hypothesis')   
     display(HTML(orig_html1))
     print('---------  After attack -------------')
-    print('New Prediction = %s. (Confidence = %0.2f) ' %(('Entailment' if np.argmax(adv_pred) == 1 else 'Contradiction'), np.max(adv_pred)*100.0))
+    print('New Prediction = %s. (Confidence = %0.2f) ' %(( labels_reverse[np.argmax(adv_pred)] ), np.max(adv_pred)*100.0))
 
     display(HTML(adv_html))
-    
-    
+'''
+def save_all_attack(model, dataset, x_orig_list, x_adv_list, file_name = 'attack_result.csv'):
+    writer = open(file_name, 'w')
+    writer.write('ID,Attacked,Hypothesis,Premise,OrigPred,NewPred,OrigConf,NewConf\n')
+    for idx in range(len(x_adv_list)):
+        x_orig = x_orig_list[idx]
+        x_adv = x_adv_list[idx]
+
+        writer.write(str(idx)+',')
+        if not isinstance(x_adv, np.ndarray):
+            writer.write('This attack failed, , , , , ,\n')
+            continue
+
+        x_adv_padding = np.pad(x_adv, (len(x_orig[1])-len(x_adv),0), 'constant', constant_values=0)
+
+        orig_pred = model.predict(x_orig[0], x_orig[1])
+        adv_pred = model.predict(x_orig[0], x_adv_padding)
+        
+        # remove padding
+        orig_list0 = list(x_orig[0][len(x_orig[0]) - np.sum(np.sign(x_orig[0])) : len(x_orig[0])])
+        orig_list1 = list(x_orig[1][len(x_orig[1]) - np.sum(np.sign(x_orig[1])) : len(x_orig[1])])
+        adv_list = recover_max_vocal(orig_list1, list(x_adv))
+        
+        orig_txt0 = dataset.build_text(orig_list0)
+        orig_txt1 = dataset.build_text(orig_list1)
+        adv_txt = dataset.build_text(adv_list)
+
+        orig_html0 = orig_txt0
+        orig_html1, adv_html = html_render(orig_txt1, adv_txt, mark = 'square brackets')
+
+        print('Original Prediction = %s. (Confidence = %0.2f) ' %(('Entailment' if np.argmax(orig_pred) == 1 else 'Contradiction'), np.max(orig_pred)*100.0))
+        print('Premise')
+        display(HTML(orig_html0))
+        print('Hypothesis')   
+        display(HTML(orig_html1))
+        print('---------  After attack -------------')
+        print('New Prediction = %s. (Confidence = %0.2f) ' %(('Entailment' if np.argmax(adv_pred) == 1 else 'Contradiction'), np.max(adv_pred)*100.0))
+
+    print('All saved in', file_name)
+    writer.close()
+'''
 def visualize_attack2(dataset, test_idx, x_orig, x_adv, label):
     
     raw_text = dataset.test_text[test_idx]
