@@ -29,7 +29,7 @@ def html_render(x_orig, x_adv, mark = 'color'):
 def recover_max_vocal(x_orig, x_adv):
     return [x_orig[i] if x_adv[i] == 50000 else x_adv[i] for i in range(len(x_adv))]
 
-def visualize_attack(model, dataset, x_orig, x_adv):
+def visualize_attack(model, dataset, x_orig, x_adv, x_orig_no_max):
     if not isinstance(x_adv, np.ndarray):
         print('This attack failed.')
         return
@@ -37,10 +37,12 @@ def visualize_attack(model, dataset, x_orig, x_adv):
 
     orig_pred = model.predict(x_orig[0], x_orig[1])
     adv_pred = model.predict(x_orig[0], x_adv_padding)
-    
-    # remove padding
-    orig_list0 = list(x_orig[0][len(x_orig[0]) - np.sum(np.sign(x_orig[0])) : len(x_orig[0])])
-    orig_list1 = list(x_orig[1][len(x_orig[1]) - np.sum(np.sign(x_orig[1])) : len(x_orig[1])])
+
+    # remove padding from x_orig_no_max
+    orig_list0 = list(x_orig_no_max[0][len(x_orig_no_max[0]) - np.sum(np.sign(x_orig_no_max[0])) : len(x_orig_no_max[0])])
+    orig_list1 = list(x_orig_no_max[1][len(x_orig_no_max[1]) - np.sum(np.sign(x_orig_no_max[1])) : len(x_orig_no_max[1])])
+
+    #recover max vocabular limit
     adv_list = recover_max_vocal(orig_list1, list(x_adv))
     
     orig_txt0 = dataset.build_text(orig_list0)
