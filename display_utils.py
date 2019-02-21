@@ -30,20 +30,22 @@ def recover_max_vocal(x_orig, x_adv):
     return [x_orig[i] if x_adv[i] == 50000 else x_adv[i] for i in range(len(x_adv))]
 
 def visualize_attack(model, dataset, x_orig, x_adv, x_orig_no_max):
-    if not isinstance(x_adv, np.ndarray):
-        print('This attack failed.')
-        return
-    x_adv_padding = np.pad(x_adv, (len(x_orig[1])-len(x_adv),0), 'constant', constant_values=0)
-
-    orig_pred = model.predict(x_orig[0], x_orig[1])
-    adv_pred = model.predict(x_orig[0], x_adv_padding)
-
     # remove padding from x_orig_no_max
     orig_list0 = list(x_orig_no_max[0][len(x_orig_no_max[0]) - np.sum(np.sign(x_orig_no_max[0])) : len(x_orig_no_max[0])])
     orig_list1 = list(x_orig_no_max[1][len(x_orig_no_max[1]) - np.sum(np.sign(x_orig_no_max[1])) : len(x_orig_no_max[1])])
 
-    #recover max vocabular limit
-    adv_list = recover_max_vocal(orig_list1, list(x_adv))
+    if isinstance(x_adv, np.ndarray):
+        
+        x_adv_padding = np.pad(x_adv, (len(x_orig[1])-len(x_adv),0), 'constant', constant_values=0)
+        adv_pred = model.predict(x_orig[0], x_adv_padding)
+        
+        #recover max vocabular limit
+        adv_list = recover_max_vocal(orig_list1, list(x_adv))
+    
+    else: #if attack failed
+        adv_list = orig_list1
+
+    orig_pred = model.predict(x_orig[0], x_orig[1])
     
     orig_txt0 = dataset.build_text(orig_list0)
     orig_txt1 = dataset.build_text(orig_list1)
@@ -58,7 +60,7 @@ def visualize_attack(model, dataset, x_orig, x_adv, x_orig_no_max):
     print('Hypothesis')   
     display(HTML(orig_html1))
     print('---------  After attack -------------')
-    print('New Prediction = %s. (Confidence = %0.2f) ' %(( labels_reverse[np.argmax(adv_pred)] ), np.max(adv_pred)*100.0))
+    print('New Prediction = %s. (Confidence = %0.2f) ' %(( labels_reverse[np.argmax(adv_pred)] if isinstance(x_adv, np.ndarray) else 'Failed'  ), (np.max(adv_pred)*100.0 if isinstance(x_adv, np.ndarray) else 0.00 )))
 
     display(HTML(adv_html))
 '''

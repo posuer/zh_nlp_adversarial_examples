@@ -42,13 +42,12 @@ class GeneticAtack(object):
     
     def predict(self, val_Y):
         val_X = self.thisX
-        
         if any(isinstance(x, np.ndarray) for x in val_Y): #if val_Y has multiple item
             val_X = np.array([self.thisX]*len(val_Y))
             temp = val_Y
             val_Y = []
             for i in range(len(temp)): 
-                if len(temp[i]) < len(self.thisX):  
+                if len(temp[i]) <= len(self.thisX):  
                     val_Y.append(self.recover_padding(temp[i]))
             val_Y = np.array(val_Y)
         elif len(val_Y) < len(self.thisX):        
@@ -138,7 +137,7 @@ class GeneticAtack(object):
         # replace_list,_ =  embedding_utils.pick_most_similar_words(src_word, self.dist_mat, self.top_n, 0.5)
         replace_list = neigbhours[rand_idx]
         if len(replace_list) < self.top_n:
-            replace_list = np.concatenate((replace_list, np.zeros(self.top_n - replace_list.shape[0])))
+            replace_list = np.concatenate((replace_list, np.zeros(self.top_n - np.array(replace_list).shape[0])))
         return self.select_best_replacement(rand_idx, x_cur, x_orig, target, replace_list)
         
     def generate_population(self, x_orig, neigbhours_list, neighbours_dist, w_select_probs, target, pop_size):
