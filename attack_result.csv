@@ -1,3 +1,4 @@
+id,orig_label,premise,hypothesis,attack_label,after_attack
 1,entailment,而 我 当初 认为 这 是 一个 特权 ， 我 现在 仍然 这样 想 ， 我 是 唯一 的 922 ex - o ， 也 是 我 的 affc 空军,我 的 印象 是 ， 我 是 affc 空军 职业 领域 唯一 拥有 这个 数字 的 人 。,neutral,我 的 印象 是 ， 我 就是说 affc 空军 职业 领域 但 拥有 这个 数字 的 成年人 。
 2,entailment,而 我 当初 认为 这 是 一个 特权 ， 我 现在 仍然 这样 想 ， 我 是 唯一 的 922 ex - o ， 也 是 我 的 affc 空军,我 的 印象 是 ， 我 是 affc 空军 职业 领域 唯一 拥有 这个 数字 的 人 。,contradiction,我 的 印象 是 ， 我 是 affc 虚无 职业 领域 唯一 所有 这个 数字 的 人 。
 3,contradiction,他们 告诉 我 ， 呃 ， 我 最后 会 被 叫到 一个 人 那里 去 见面 。,我 从来 没有 被 告知 任何 与 任何人 会面 。,neutral,我 素来 简直 使得 报告 甚至 与会 任何人 会面 。
