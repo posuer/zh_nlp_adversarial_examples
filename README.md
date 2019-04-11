@@ -2,7 +2,9 @@
 Generating Natural Language Adversarial Examples for Chinese NLI model
 
 0) Prepare the counter_fitted_vectors
+
 Collecting Chinese synonyms and antonyms word pairs
+
 Train Chinese counter-fitted vectors by using https://github.com/nmrksic/counter-fitting
 
 1) Build the vocabulary and embeddings matrix.
