@@ -1,6 +1,10 @@
 # zh_nlp_adversarial_examples
 Generating Natural Language Adversarial Examples for Chinese NLI model
 
+0) Prepare the counter_fitted_vectors
+Collecting Chinese synonyms and antonyms word pairs
+Train Chinese counter-fitted vectors by using https://github.com/nmrksic/counter-fitting
+
 1) Build the vocabulary and embeddings matrix.
 ```
 python build_embeddings.py
@@ -8,7 +12,7 @@ python build_embeddings.py
 
 That will take like a minute, and it will tokenize the dataset and save it to a pickle file. It will also compute some auxiliary files like the matrix of the vector embeddings for words in our dictionary. All files will be saved under `aux_files` directory created by this script.
 
-2) Train the sentiment analysis model.
+2) Train the NLI model.
 ```
 python train_model.py
 ```
